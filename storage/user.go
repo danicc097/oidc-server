@@ -4,7 +4,9 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"io"
+	"log"
+	"os"
+	"path/filepath"
 
 	"golang.org/x/text/language"
 )
@@ -34,14 +36,14 @@ type UserStore interface {
 }
 
 type userStore struct {
-	users    map[string]*User
-	jsonFile io.Reader
+	users   map[string]*User
+	dataDir string
 }
 
-func NewUserStore(issuer string, jsonFile io.Reader) (UserStore, error) {
+func NewUserStore(issuer string, dataDir string) (UserStore, error) {
 	store := userStore{
-		users:    make(map[string]*User),
-		jsonFile: jsonFile,
+		users:   make(map[string]*User),
+		dataDir: dataDir,
 	}
 
 	err := store.LoadUsersFromJSON()
@@ -58,14 +60,33 @@ func (u *userStore) ExampleClientID() string {
 }
 
 func (u *userStore) LoadUsersFromJSON() error {
-	data, err := io.ReadAll(u.jsonFile)
+	u.users = make(map[string]*User) // Clear the existing user dictionary
+
+	files, err := os.ReadDir(u.dataDir)
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal(data, &u.users)
-	if err != nil {
-		return err
+	for _, file := range files {
+		if !file.IsDir() && filepath.Ext(file.Name()) == ".json" {
+			filePath := filepath.Join(u.dataDir, file.Name())
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				return err
+			}
+
+			var uu map[string]*User
+			err = json.Unmarshal(data, &uu)
+			if err != nil {
+				return fmt.Errorf("invalid users in %s: %w", filePath, err)
+			}
+
+			for username, user := range uu {
+				u.users[username] = user
+			}
+
+			log.Printf("loaded users from %s", filePath)
+		}
 	}
 
 	return nil

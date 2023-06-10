@@ -15,14 +15,9 @@ func main() {
 
 	issuer := os.Getenv("OIDC_ISSUER")
 	port := "10001" // for internal network
+	dataDir := "/data/users"
 
-	usersFile, err := os.Open("/data/users.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer usersFile.Close()
-
-	us, err := storage.NewUserStore(issuer, usersFile)
+	us, err := storage.NewUserStore(issuer, dataDir)
 	if err != nil {
 		log.Fatal("could not create user store: ", err)
 	}
