@@ -14,9 +14,20 @@ func main() {
 	ctx := context.Background()
 
 	issuer := os.Getenv("OIDC_ISSUER")
-	storage := storage.NewStorage(storage.NewUserStore(issuer))
-
 	port := "10001" // for internal network
+
+	usersFile, err := os.Open("/data/users.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer usersFile.Close()
+
+	us, err := storage.NewUserStore(issuer, usersFile)
+	if err != nil {
+		log.Fatal("could not create user store: ", err)
+	}
+
+	storage := storage.NewStorage(us)
 
 	router := exampleop.SetupServer(issuer, storage)
 
@@ -25,7 +36,7 @@ func main() {
 		Handler: router,
 	}
 	log.Default().Printf("listening at: %s", server.Addr)
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	// if running in localhost manually add certs, else let traefik handle https
 	// err := server.ListenAndServeTLS("certificates/localhost.pem", "certificates/localhost-key.pem")
 	if err != nil {

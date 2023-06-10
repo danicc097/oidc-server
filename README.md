@@ -12,3 +12,7 @@ Authorization server listens on port `10001`. Expose accordingly.
 
 `OIDC_ISSUER`: fully qualified domain name.
 
+# Expected volume files
+
+`/data/users.json`: key-value pairs of users indexed by username. See `users.example.json`.
+

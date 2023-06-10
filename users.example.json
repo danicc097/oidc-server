@@ -1,0 +1,38 @@
+{
+  "admin": {
+    "id": "id1",
+    "username": "admin",
+    "password": "admin",
+    "firstName": "Test",
+    "lastName": "User",
+    "email": "admin@admin.com",
+    "emailVerified": true,
+    "phone": "",
+    "phoneVerified": false,
+    "preferredLanguage": "de"
+  },
+  "user2": {
+    "id": "id2",
+    "username": "user2",
+    "password": "user2",
+    "firstName": "Test 2",
+    "lastName": "User 2",
+    "email": "user2@app.com",
+    "emailVerified": true,
+    "phone": "",
+    "phoneVerified": false,
+    "preferredLanguage": "de"
+  },
+  "user3": {
+    "id": "id3",
+    "username": "user3",
+    "password": "user3",
+    "firstName": "Test 3",
+    "lastName": "User 3",
+    "email": "user3@app.com",
+    "emailVerified": true,
+    "phone": "",
+    "phoneVerified": false,
+    "preferredLanguage": "de"
+  }
+}
