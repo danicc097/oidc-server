@@ -16,5 +16,5 @@ Authorization server listens on port `10001`. Expose accordingly.
 
 `/data/users/*.json`: JSON files with key-value pairs of users indexed by
 username for easier testing. Users will be combined in ascending
-filename order and overriden by username. See `storage/user.go`.
+filename order and overriden by username. See `storage/user.go`'s `User`.
 
