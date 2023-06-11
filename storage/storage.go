@@ -660,6 +660,10 @@ func (s *Storage) setUserinfo(ctx context.Context, userInfo *oidc.UserInfo, user
 		case oidc.ScopePhone:
 			userInfo.PhoneNumber = user.Phone
 			userInfo.PhoneNumberVerified = user.PhoneVerified
+		case AuthScope:
+			userInfo.AppendClaims(AuthClaim, map[string]interface{}{
+				"is_admin": user.IsAdmin,
+			})
 		case CustomScope:
 			// you can also have a custom scope and assert public or custom claims based on that
 			userInfo.AppendClaims(CustomClaim, customClaim(clientID))
