@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 	"golang.org/x/text/language"
 
-	"github.com/danicc097/openapi-go-gin-postgres-sqlc/external/oidc-server/storage"
+	"github.com/danicc097/oidc-server/storage"
 	"github.com/zitadel/logging"
 	"github.com/zitadel/oidc/v2/pkg/op"
 )
@@ -22,10 +23,17 @@ const (
 )
 
 func init() {
+	content, err := os.ReadFile("/redirect_uris.txt")
+	if err != nil {
+		panic(fmt.Errorf("could not read redirect_uris.txt: %w", err))
+	}
+
+	redirectURIs := strings.Split(string(content), "\n")
+	fmt.Printf("redirectURIs: %v\n", redirectURIs)
 	storage.RegisterClients(
-		storage.NativeClient("native"),
-		storage.WebClient("web", "secret"),
-		storage.WebClient("api", "secret"),
+		storage.NativeClient("native", redirectURIs...),
+		storage.WebClient("web", "secret", redirectURIs...),
+		storage.WebClient("api", "secret", redirectURIs...),
 	)
 }
 

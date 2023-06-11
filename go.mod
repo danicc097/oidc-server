@@ -1,4 +1,4 @@
-module github.com/danicc097/openapi-go-gin-postgres-sqlc/external/oidc-server
+module github.com/danicc097/oidc-server
 
 go 1.19
 

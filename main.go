@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/danicc097/openapi-go-gin-postgres-sqlc/external/oidc-server/exampleop"
-	"github.com/danicc097/openapi-go-gin-postgres-sqlc/external/oidc-server/storage"
+	"github.com/danicc097/oidc-server/exampleop"
+	"github.com/danicc097/oidc-server/storage"
 )
 
 func main() {
