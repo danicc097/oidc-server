@@ -11,6 +11,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 FROM alpine:3.15 AS runtime
 
+RUN apk --no-cache add ca-certificates
+
 VOLUME [ "/data" ]
 
 COPY --from=builder /go/src/server ./
