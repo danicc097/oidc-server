@@ -23,9 +23,9 @@ const (
 )
 
 func init() {
-	content, err := os.ReadFile("/redirect_uris.txt")
+	content, err := os.ReadFile("/data/redirect_uris.txt")
 	if err != nil {
-		panic(fmt.Errorf("could not read redirect_uris.txt: %w", err))
+		panic(fmt.Errorf("could not read /data/redirect_uris.txt: %w", err))
 	}
 
 	redirectURIs := strings.Split(string(content), "\n")
