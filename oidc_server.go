@@ -81,6 +81,9 @@ type Config[T storage.User] struct {
 		CertFile string
 		KeyFile  string
 	}
+
+	// PathPrefix represents domain subdirectories for the base URL, if any.
+	PathPrefix string
 }
 
 // Runs starts the OIDC server.
@@ -98,7 +101,7 @@ func Run[T storage.User](config Config[T]) {
 
 	storage := storage.NewStorage(us, config.SetUserInfoFunc, config.GetPrivateClaimsFromScopesFunc)
 
-	router := exampleop.SetupServer(issuer, storage)
+	router := exampleop.SetupServer(issuer, storage, config.PathPrefix)
 
 	server := &http.Server{
 		Addr:    ":" + port,
