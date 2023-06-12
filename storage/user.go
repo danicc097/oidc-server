@@ -81,8 +81,11 @@ func (u *userStore) LoadUsersFromJSON() error {
 				return fmt.Errorf("invalid users in %s: %w", filePath, err)
 			}
 
-			for username, user := range uu {
-				u.users[username] = user
+			for _, user := range uu {
+				if _, exists := u.users[user.ID]; exists {
+					log.Fatalf("%s: %s: user with ID %s already exists", filePath, user.Username, user.ID)
+				}
+				u.users[user.ID] = user
 			}
 
 			log.Printf("loaded users from %s", filePath)
@@ -92,15 +95,15 @@ func (u *userStore) LoadUsersFromJSON() error {
 	return nil
 }
 
-func (u *userStore) GetUserByID(id string) *User {
+func (u userStore) GetUserByID(id string) *User {
+	return u.users[id]
+}
+
+func (u userStore) GetUserByUsername(username string) *User {
 	for _, user := range u.users {
-		if user.ID == id {
+		if user.Username == username {
 			return user
 		}
 	}
 	return nil
-}
-
-func (u *userStore) GetUserByUsername(username string) *User {
-	return u.users[username]
 }
