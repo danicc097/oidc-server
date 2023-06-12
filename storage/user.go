@@ -44,6 +44,11 @@ type userStore struct {
 	mu      sync.RWMutex
 }
 
+var StorageErrors struct {
+	errors []string
+	mu     sync.RWMutex
+}
+
 func NewUserStore(issuer string, dataDir string) (UserStore, error) {
 	store := userStore{
 		users:   make(map[string]*User),
@@ -103,14 +108,14 @@ func (u *userStore) LoadUsersFromJSON() error {
 	return nil
 }
 
-func (u userStore) GetUserByID(id string) *User {
+func (u *userStore) GetUserByID(id string) *User {
 	u.mu.RLock()
 	defer u.mu.RUnlock()
 
 	return u.users[id]
 }
 
-func (u userStore) GetUserByUsername(username string) *User {
+func (u *userStore) GetUserByUsername(username string) *User {
 	u.mu.RLock()
 	defer u.mu.RUnlock()
 
@@ -140,14 +145,15 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("file modified:", event.Name)
 					err := userStore.LoadUsersFromJSON()
+					StorageErrors.mu.Lock()
 					if err != nil {
-						// don't shutdown server. if we messed up just check the logs...
-						// there should be a global StoreErrors []string with rw mutex
-						// so that if len > 0 we render an error message in login page, callbacks...
-						// this way we notice the error asap without checking logs.
-						log.Println("error reloading users: %s", err)
+						errMsg := fmt.Sprintf("error reloading users: %s", err)
+						StorageErrors.errors = append(StorageErrors.errors, errMsg)
+						log.Println(errMsg)
+					} else {
+						StorageErrors.errors = []string{}
 					}
-					// if ok, set StoreErrors to empty slice
+					StorageErrors.mu.Unlock()
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -158,12 +164,12 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 		}
 	}()
 
-	err = filepath.Walk(dataDir, func(path string, info fs.FileInfo, err error) error {
+	err = filepath.WalkDir(dataDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			log.Println("walkDir error:", err)
 			return err
 		}
-		if !info.IsDir() {
+		if !d.IsDir() {
 			err = watcher.Add(path)
 			if err != nil {
 				log.Println("watcher error:", err)
