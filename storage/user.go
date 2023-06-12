@@ -138,37 +138,37 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 					return
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Println("File modified:", event.Name)
+					log.Println("file modified:", event.Name)
 					err := userStore.LoadUsersFromJSON()
 					if err != nil {
-						log.Println("Error reloading users:", err)
+						log.Fatalf("error reloading users:", err)
 					}
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				log.Println("Watcher error:", err)
+				log.Println("watcher error:", err)
 			}
 		}
 	}()
 
 	err = filepath.Walk(dataDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
-			log.Println("WalkDir error:", err)
+			log.Println("walkDir error:", err)
 			return err
 		}
 		if !info.IsDir() {
 			err = watcher.Add(path)
 			if err != nil {
-				log.Println("Watcher error:", err)
+				log.Println("watcher error:", err)
 				return err
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		log.Println("Walk error:", err)
+		log.Println("walk error:", err)
 	}
 
 	<-done
