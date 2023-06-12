@@ -13,35 +13,27 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
-	"golang.org/x/text/language"
 )
 
-type User struct {
-	ID                string       `json:"id"`
-	Username          string       `json:"username"`
-	Password          string       `json:"password"`
-	FirstName         string       `json:"firstName"`
-	LastName          string       `json:"lastName"`
-	Email             string       `json:"email"`
-	EmailVerified     bool         `json:"emailVerified"`
-	Phone             string       `json:"phone"`
-	PhoneVerified     bool         `json:"phoneVerified"`
-	PreferredLanguage language.Tag `json:"preferredLanguage"`
-	IsAdmin           bool         `json:"isAdmin"`
+type User interface {
+	ID() string
+	Username() string
+	Password() string
+	IsAdmin() bool
 }
 
 type Service struct {
 	keys map[string]*rsa.PublicKey
 }
 
-type UserStore interface {
-	GetUserByID(string) *User
-	GetUserByUsername(string) *User
+type UserStore[T User] interface {
+	GetUserByID(string) *T
+	GetUserByUsername(string) *T
 	ExampleClientID() string
 }
 
-type userStore struct {
-	users   map[string]*User
+type userStore[T User] struct {
+	users   map[string]*T
 	dataDir string
 	mu      sync.RWMutex
 }
@@ -51,9 +43,9 @@ var StorageErrors struct {
 	mu     sync.RWMutex
 }
 
-func NewUserStore(issuer string, dataDir string) (UserStore, error) {
-	store := userStore{
-		users:   make(map[string]*User),
+func NewUserStore[T User](issuer string, dataDir string) (UserStore[T], error) {
+	store := userStore[T]{
+		users:   make(map[string]*T),
 		dataDir: dataDir,
 	}
 
@@ -67,15 +59,15 @@ func NewUserStore(issuer string, dataDir string) (UserStore, error) {
 	return &store, nil
 }
 
-func (u *userStore) ExampleClientID() string {
+func (u *userStore[T]) ExampleClientID() string {
 	return "service"
 }
 
-func (u *userStore) LoadUsersFromJSON() error {
+func (u *userStore[T]) LoadUsersFromJSON() error {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
-	u.users = make(map[string]*User)
+	u.users = make(map[string]*T)
 
 	files, err := os.ReadDir(u.dataDir)
 	if err != nil {
@@ -92,19 +84,19 @@ func (u *userStore) LoadUsersFromJSON() error {
 				return err
 			}
 
-			var uu map[string]*User
+			var uu map[string]*T
 			err = json.Unmarshal(data, &uu)
 			if err != nil {
 				return fmt.Errorf("invalid users in %s: %w", filePath, err)
 			}
 
 			for _, user := range uu {
-				if _, exists := u.users[user.ID]; exists {
-					errMsg := fmt.Sprintf("%s: %s: user with ID %s already exists", filePath, user.Username, user.ID)
+				if _, exists := u.users[(*user).ID()]; exists {
+					errMsg := fmt.Sprintf("%s: %s: user with ID %s already exists", filePath, (*user).Username(), (*user).ID())
 					errs = append(errs, errMsg)
 					log.Println(errMsg)
 				}
-				u.users[user.ID] = user
+				u.users[(*user).ID()] = user
 			}
 
 			if len(errs) > 0 {
@@ -118,26 +110,27 @@ func (u *userStore) LoadUsersFromJSON() error {
 	return nil
 }
 
-func (u *userStore) GetUserByID(id string) *User {
+func (u *userStore[T]) GetUserByID(id string) *T {
 	u.mu.RLock()
 	defer u.mu.RUnlock()
 
 	return u.users[id]
 }
 
-func (u *userStore) GetUserByUsername(username string) *User {
+func (u *userStore[T]) GetUserByUsername(username string) *T {
 	u.mu.RLock()
 	defer u.mu.RUnlock()
 
 	for _, user := range u.users {
-		if user.Username == username {
+		if (*user).Username() == username {
 			return user
 		}
 	}
+
 	return nil
 }
 
-func watchUsersFolder(dataDir string, userStore *userStore) {
+func watchUsersFolder[T User](dataDir string, userStore *userStore[T]) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)

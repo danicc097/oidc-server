@@ -15,9 +15,34 @@ import (
 )
 
 // Config defines OIDC server configuration.
-type Config struct {
-	// SetUserInfoFunc overrides population of userinfo .
-	SetUserInfoFunc storage.SetUserInfoFunc
+type Config[T storage.User] struct {
+	// SetUserInfoFunc overrides population of userinfo based on scope.
+	// Example:
+	// func SetUserInfoFunc(user *CustomUser, userInfo *oidc.UserInfo, scope string, clientID string) {
+	// 	switch scope {
+	// 	case oidc.ScopeOpenID:
+	// 		userInfo.Subject = user.ID
+	// 	case oidc.ScopeEmail:
+	// 		userInfo.Email = user.Email
+	// 		userInfo.EmailVerified = oidc.Bool(user.EmailVerified)
+	// 	case oidc.ScopeProfile:
+	// 		userInfo.PreferredUsername = user.Username
+	// 		userInfo.Name = user.FirstName + " " + user.LastName
+	// 		userInfo.FamilyName = user.LastName
+	// 		userInfo.GivenName = user.FirstName
+	// 		userInfo.Locale = oidc.NewLocale(user.PreferredLanguage)
+	// 	case oidc.ScopePhone:
+	// 		userInfo.PhoneNumber = user.Phone
+	// 		userInfo.PhoneNumberVerified = user.PhoneVerified
+	// 	case AuthScope:
+	// 		userInfo.AppendClaims(AuthClaim, map[string]interface{}{
+	// 			"is_admin": user.IsAdmin,
+	// 		})
+	// 	case CustomScope:
+	// 		userInfo.AppendClaims(CustomClaim, customClaim(clientID))
+	// 	}
+	// }
+	SetUserInfoFunc storage.SetUserInfoFunc[T]
 	// TLS runs the server with the given certificate.
 	TLS *struct {
 		CertFile string
@@ -26,14 +51,14 @@ type Config struct {
 }
 
 // Runs starts the OIDC server.
-func Run(config Config) {
+func Run[T storage.User](config Config[T]) {
 	ctx := context.Background()
 
-	issuer := os.Getenv("OIDC_ISSUER")
+	issuer := os.Getenv("ISSUER")
 	port := "10001" // for internal network
 	usersDataDir := path.Join(os.Getenv("DATA_DIR"), "users")
 
-	us, err := storage.NewUserStore(issuer, usersDataDir)
+	us, err := storage.NewUserStore[T](issuer, usersDataDir)
 	if err != nil {
 		log.Fatal("could not create user store: ", err)
 	}

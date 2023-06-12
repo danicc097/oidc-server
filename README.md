@@ -10,8 +10,8 @@ Authorization server listens on port `10001`. Expose accordingly.
 
 # Runtime environment variables
 
-`OIDC_ISSUER`: fully qualified domain name.
-`DATA_DIR`: absolute path to stored mock data.
+`ISSUER`: fully qualified domain name.
+`DATA_DIR`: absolute path to stored mock data. e.g. `/data`
 
 # Required files
 
