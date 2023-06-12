@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"golang.org/x/text/language"
@@ -136,7 +137,11 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 	}
 	defer watcher.Close()
 
+	var isProcessing bool
+
 	done := make(chan bool)
+	events := make(chan fsnotify.Event)
+
 	go func() {
 		for {
 			select {
@@ -144,6 +149,37 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 				if !ok {
 					return
 				}
+
+				events <- event
+
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Printf("watcher error: %s", err)
+			}
+		}
+	}()
+
+	go func() {
+		// debounce duplicated events
+		debounceDuration := 50 * time.Millisecond
+
+		timer := time.NewTimer(0)
+
+		for {
+			select {
+			case event := <-events:
+				if !timer.Stop() {
+					<-timer.C
+				}
+				timer.Reset(debounceDuration)
+
+				if isProcessing {
+					continue
+				}
+
+				isProcessing = true
 				if event.Has(fsnotify.Write) {
 					log.Printf("file modified: %s", event.Name)
 					err := userStore.LoadUsersFromJSON()
@@ -156,11 +192,10 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 					}
 					StorageErrors.mu.Unlock()
 				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Printf("watcher error: %s", err)
+				isProcessing = false
+
+			case <-timer.C:
+				isProcessing = false
 			}
 		}
 	}()
