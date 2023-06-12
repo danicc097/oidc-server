@@ -96,12 +96,12 @@ func (u *userStore) LoadUsersFromJSON() error {
 
 			for _, user := range uu {
 				if _, exists := u.users[user.ID]; exists {
-					log.Println("%s: %s: user with ID %s already exists", filePath, user.Username, user.ID)
+					log.Printf("%s: %s: user with ID %s already exists", filePath, user.Username, user.ID)
 				}
 				u.users[user.ID] = user
 			}
 
-			log.Println("loaded users from %s", filePath)
+			log.Printf("loaded users from %s", filePath)
 		}
 	}
 
@@ -143,13 +143,13 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 					return
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Println("file modified:", event.Name)
+					log.Printf("file modified:", event.Name)
 					err := userStore.LoadUsersFromJSON()
 					StorageErrors.mu.Lock()
 					if err != nil {
 						errMsg := fmt.Sprintf("error reloading users: %s", err)
 						StorageErrors.errors = append(StorageErrors.errors, errMsg)
-						log.Println(errMsg)
+						log.Printf(errMsg)
 					} else {
 						StorageErrors.errors = []string{}
 					}
@@ -159,27 +159,27 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 				if !ok {
 					return
 				}
-				log.Println("watcher error:", err)
+				log.Printf("watcher error:", err)
 			}
 		}
 	}()
 
 	err = filepath.WalkDir(dataDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			log.Println("walkDir error:", err)
+			log.Printf("walkDir error:", err)
 			return err
 		}
 		if !d.IsDir() {
 			err = watcher.Add(path)
 			if err != nil {
-				log.Println("watcher error:", err)
+				log.Printf("watcher error:", err)
 				return err
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		log.Println("walk error:", err)
+		log.Printf("walk error:", err)
 	}
 
 	<-done
