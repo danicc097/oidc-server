@@ -5,10 +5,12 @@ package oidc_server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/danicc097/oidc-server/exampleop"
 	"github.com/danicc097/oidc-server/storage"
@@ -88,6 +90,22 @@ type Config[T storage.User] struct {
 
 // Runs starts the OIDC server.
 func Run[T storage.User](config Config[T]) {
+	redirectURIsPath := path.Join(os.Getenv("DATA_DIR"), "redirect_uris.txt")
+	content, err := os.ReadFile(redirectURIsPath)
+	if err != nil {
+		panic(fmt.Errorf("could not read %s: %w", redirectURIsPath, err))
+	}
+
+	redirectURIs := strings.Split(string(content), "\n")
+
+	fmt.Printf("Redirect URIs: %s\n", redirectURIs)
+
+	storage.RegisterClients(
+		storage.NativeClient("native", redirectURIs...),
+		storage.WebClient("web", "secret", redirectURIs...),
+		storage.WebClient("api", "secret", redirectURIs...),
+	)
+
 	ctx := context.Background()
 
 	issuer := os.Getenv("ISSUER")

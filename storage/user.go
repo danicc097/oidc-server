@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -147,6 +148,7 @@ func watchUsersFolder[T User](dataDir string, userStore *userStore[T]) {
 				}
 				if event.Has(fsnotify.Write) {
 					log.Printf("file modified: %s", event.Name)
+					time.Sleep(50 * time.Millisecond) // seems to be kind of a race with a duplicated event
 					err := userStore.LoadUsersFromJSON()
 					StorageErrors.mu.Lock()
 					StorageErrors.Errors = []string{}
