@@ -7,12 +7,16 @@ import (
 	"github.com/zitadel/oidc/v2/pkg/op"
 )
 
-const prefix = "oidc/"
-
 var (
 	// we use the default login UI and pass the (auth request) id
-	defaultLoginURL = func(id string) string {
-		return prefix + "login/username?authRequestID=" + id
+	defaultLoginURL = func(pathPrefix string) func(id string) string {
+		prefix := ""
+		if pathPrefix != "" {
+			prefix = pathPrefix + "/"
+		}
+		return func(id string) string {
+			return prefix + "login/username?authRequestID=" + id
+		}
 	}
 
 	// clients to be used by the storage interface
@@ -146,7 +150,7 @@ func RegisterClients(registerClients ...*Client) {
 // - http://localhost without port specification (e.g. http://localhost/auth/callback)
 // - custom protocol (e.g. custom://auth/callback)
 // (the examples will be used as default, if none is provided)
-func NativeClient(id string, redirectURIs ...string) *Client {
+func NativeClient(id string, pathPrefix string, redirectURIs ...string) *Client {
 	if len(redirectURIs) == 0 {
 		redirectURIs = []string{
 			"http://localhost/auth/callback",
@@ -159,7 +163,7 @@ func NativeClient(id string, redirectURIs ...string) *Client {
 		redirectURIs:    redirectURIs,
 		applicationType: op.ApplicationTypeNative,
 		authMethod:      oidc.AuthMethodNone,
-		loginURL:        defaultLoginURL,
+		loginURL:        defaultLoginURL(pathPrefix),
 		responseTypes:   []oidc.ResponseType{oidc.ResponseTypeCode},
 		grantTypes:      []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken},
 		accessTokenType: op.AccessTokenTypeBearer,
@@ -174,7 +178,7 @@ func NativeClient(id string, redirectURIs ...string) *Client {
 // user-defined redirectURIs may include:
 // - http://localhost with port specification (e.g. http://localhost:9999/auth/callback)
 // (the example will be used as default, if none is provided)
-func WebClient(id, secret string, redirectURIs ...string) *Client {
+func WebClient(id, secret string, pathPrefix string, redirectURIs ...string) *Client {
 	if len(redirectURIs) == 0 {
 		redirectURIs = []string{
 			"http://localhost:9999/auth/callback",
@@ -187,7 +191,7 @@ func WebClient(id, secret string, redirectURIs ...string) *Client {
 		redirectURIs:                   redirectURIs,
 		applicationType:                op.ApplicationTypeWeb,
 		authMethod:                     oidc.AuthMethodBasic,
-		loginURL:                       defaultLoginURL,
+		loginURL:                       defaultLoginURL(pathPrefix),
 		responseTypes:                  []oidc.ResponseType{oidc.ResponseTypeCode},
 		grantTypes:                     []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken},
 		accessTokenType:                op.AccessTokenTypeBearer,
@@ -198,14 +202,14 @@ func WebClient(id, secret string, redirectURIs ...string) *Client {
 }
 
 // DeviceClient creates a device client with Basic authentication.
-func DeviceClient(id, secret string) *Client {
+func DeviceClient(id, secret, pathPrefix string) *Client {
 	return &Client{
 		id:                             id,
 		secret:                         secret,
 		redirectURIs:                   nil,
 		applicationType:                op.ApplicationTypeWeb,
 		authMethod:                     oidc.AuthMethodBasic,
-		loginURL:                       defaultLoginURL,
+		loginURL:                       defaultLoginURL(pathPrefix),
 		responseTypes:                  []oidc.ResponseType{oidc.ResponseTypeCode},
 		grantTypes:                     []oidc.GrantType{oidc.GrantTypeDeviceCode},
 		accessTokenType:                op.AccessTokenTypeBearer,

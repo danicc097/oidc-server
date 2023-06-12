@@ -98,12 +98,15 @@ func Run[T storage.User](config Config[T]) {
 
 	redirectURIs := strings.Split(string(content), "\n")
 
-	fmt.Printf("Redirect URIs: %s\n", redirectURIs)
+	log.Default().Printf("Redirect URIs: %s\n", redirectURIs)
 
+	if config.PathPrefix != "" {
+		log.Default().Printf("Using domain path prefix: %v\n", config.PathPrefix)
+	}
 	storage.RegisterClients(
-		storage.NativeClient("native", redirectURIs...),
-		storage.WebClient("web", "secret", redirectURIs...),
-		storage.WebClient("api", "secret", redirectURIs...),
+		storage.NativeClient("native", config.PathPrefix, redirectURIs...),
+		storage.WebClient("web", "secret", config.PathPrefix, redirectURIs...),
+		storage.WebClient("api", "secret", config.PathPrefix, redirectURIs...),
 	)
 
 	ctx := context.Background()
