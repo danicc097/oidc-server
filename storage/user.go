@@ -4,10 +4,13 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 
+	"github.com/fsnotify/fsnotify"
 	"golang.org/x/text/language"
 )
 
@@ -38,6 +41,7 @@ type UserStore interface {
 type userStore struct {
 	users   map[string]*User
 	dataDir string
+	mu      sync.RWMutex
 }
 
 func NewUserStore(issuer string, dataDir string) (UserStore, error) {
@@ -51,16 +55,20 @@ func NewUserStore(issuer string, dataDir string) (UserStore, error) {
 		return nil, fmt.Errorf("could not load users from JSON: %w", err)
 	}
 
+	go watchFolder(dataDir, &store)
+
 	return &store, nil
 }
 
-// ExampleClientID is only used in the example server
 func (u *userStore) ExampleClientID() string {
 	return "service"
 }
 
 func (u *userStore) LoadUsersFromJSON() error {
-	u.users = make(map[string]*User) // Clear the existing user dictionary
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	u.users = make(map[string]*User)
 
 	files, err := os.ReadDir(u.dataDir)
 	if err != nil {
@@ -96,14 +104,72 @@ func (u *userStore) LoadUsersFromJSON() error {
 }
 
 func (u userStore) GetUserByID(id string) *User {
+	u.mu.RLock()
+	defer u.mu.RUnlock()
+
 	return u.users[id]
 }
 
 func (u userStore) GetUserByUsername(username string) *User {
+	u.mu.RLock()
+	defer u.mu.RUnlock()
+
 	for _, user := range u.users {
 		if user.Username == username {
 			return user
 		}
 	}
 	return nil
+}
+
+func watchFolder(dataDir string, userStore *userStore) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer watcher.Close()
+
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					log.Println("File modified:", event.Name)
+					err := userStore.LoadUsersFromJSON()
+					if err != nil {
+						log.Println("Error reloading users:", err)
+					}
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Println("Watcher error:", err)
+			}
+		}
+	}()
+
+	err = filepath.Walk(dataDir, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			log.Println("WalkDir error:", err)
+			return err
+		}
+		if !info.IsDir() {
+			err = watcher.Add(path)
+			if err != nil {
+				log.Println("Watcher error:", err)
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.Println("Walk error:", err)
+	}
+
+	<-done
 }
