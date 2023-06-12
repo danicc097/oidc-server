@@ -144,7 +144,7 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 				if !ok {
 					return
 				}
-				if event.Op&fsnotify.Write == fsnotify.Write {
+				if event.Has(fsnotify.Write) {
 					log.Printf("file modified: %s", event.Name)
 					err := userStore.LoadUsersFromJSON()
 					StorageErrors.mu.Lock()
