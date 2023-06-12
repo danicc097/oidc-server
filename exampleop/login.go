@@ -50,9 +50,10 @@ func (l *login) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 func renderLogin(w http.ResponseWriter, id string, err error) {
 	if len(storage.StorageErrors.Errors) > 0 {
-		errMsg := strings.Join(storage.StorageErrors.Errors, "\n")
+		errMsg := strings.Join(storage.StorageErrors.Errors, " | ")
 		fmt.Printf("storage error err: %v\n", errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
+
 		return
 	}
 

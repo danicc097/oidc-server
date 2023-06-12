@@ -3,13 +3,14 @@ package storage
 import (
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
-	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"golang.org/x/text/language"
@@ -81,6 +82,8 @@ func (u *userStore) LoadUsersFromJSON() error {
 		return err
 	}
 
+	errs := []string{}
+
 	for _, file := range files {
 		if !file.IsDir() && filepath.Ext(file.Name()) == ".json" {
 			filePath := filepath.Join(u.dataDir, file.Name())
@@ -98,10 +101,14 @@ func (u *userStore) LoadUsersFromJSON() error {
 			for _, user := range uu {
 				if _, exists := u.users[user.ID]; exists {
 					errMsg := fmt.Sprintf("%s: %s: user with ID %s already exists", filePath, user.Username, user.ID)
-					StorageErrors.Errors = append(StorageErrors.Errors, errMsg)
+					errs = append(errs, errMsg)
 					log.Println(errMsg)
 				}
 				u.users[user.ID] = user
+			}
+
+			if len(errs) > 0 {
+				return errors.New(strings.Join(errs, "\n"))
 			}
 
 			log.Printf("loaded users from %s", filePath)
@@ -137,11 +144,7 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 	}
 	defer watcher.Close()
 
-	var isProcessing bool
-
 	done := make(chan bool)
-	events := make(chan fsnotify.Event)
-
 	go func() {
 		for {
 			select {
@@ -149,37 +152,6 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 				if !ok {
 					return
 				}
-
-				events <- event
-
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Printf("watcher error: %s", err)
-			}
-		}
-	}()
-
-	go func() {
-		// debounce duplicated events
-		debounceDuration := 50 * time.Millisecond
-
-		timer := time.NewTimer(0)
-
-		for {
-			select {
-			case event := <-events:
-				if !timer.Stop() {
-					<-timer.C
-				}
-				timer.Reset(debounceDuration)
-
-				if isProcessing {
-					continue
-				}
-
-				isProcessing = true
 				if event.Has(fsnotify.Write) {
 					log.Printf("file modified: %s", event.Name)
 					err := userStore.LoadUsersFromJSON()
@@ -192,10 +164,11 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 					}
 					StorageErrors.mu.Unlock()
 				}
-				isProcessing = false
-
-			case <-timer.C:
-				isProcessing = false
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Printf("watcher error: %s", err)
 			}
 		}
 	}()
