@@ -10,13 +10,6 @@ import (
 )
 
 const (
-	// CustomScope is an example for how to use custom scopes in this library
-	//(in this scenario, when requested, it will return a custom claim)
-	CustomScope = "custom_scope"
-	AuthScope   = "auth"
-	// CustomClaim is an example for how to return custom claims with this library
-	CustomClaim = "custom_claim"
-	AuthClaim   = "auth"
 	// CustomScopeImpersonatePrefix is an example scope prefix for passing user id to impersonate using token exchage
 	CustomScopeImpersonatePrefix = "custom_scope:impersonate:"
 )

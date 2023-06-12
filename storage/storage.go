@@ -38,22 +38,26 @@ var (
 // typically you would implement this as a layer on top of your database
 // for simplicity this example keeps everything in-memory
 type Storage[T User] struct {
-	lock            sync.Mutex
-	authRequests    map[string]*AuthRequest
-	codes           map[string]string
-	tokens          map[string]*Token
-	clients         map[string]*Client
-	userStore       UserStore[T]
-	services        map[string]Service
-	refreshTokens   map[string]*RefreshToken
-	signingKey      signingKey
-	deviceCodes     map[string]deviceAuthorizationEntry
-	userCodes       map[string]string
-	serviceUsers    map[string]*Client
-	setUserInfoFunc SetUserInfoFunc[T]
+	lock                       sync.Mutex
+	authRequests               map[string]*AuthRequest
+	codes                      map[string]string
+	tokens                     map[string]*Token
+	clients                    map[string]*Client
+	userStore                  UserStore[T]
+	services                   map[string]Service
+	refreshTokens              map[string]*RefreshToken
+	signingKey                 signingKey
+	deviceCodes                map[string]deviceAuthorizationEntry
+	userCodes                  map[string]string
+	serviceUsers               map[string]*Client
+	setUserInfoFunc            SetUserInfoFunc[T]
+	getPrivateClaimsFromScopes GetPrivateClaimsFromScopesFunc
 }
 
-type SetUserInfoFunc[T User] func(user *T, userInfo *oidc.UserInfo, scope string, clientID string)
+type (
+	SetUserInfoFunc[T User]        func(user *T, userInfo *oidc.UserInfo, scope string, clientID string)
+	GetPrivateClaimsFromScopesFunc func(ctx context.Context, userID, clientID string, scopes []string) (claims map[string]interface{}, err error)
+)
 
 type signingKey struct {
 	id        string
@@ -93,19 +97,23 @@ func (s *publicKey) Key() interface{} {
 	return &s.key.PublicKey
 }
 
-func NewStorage[T User](userStore UserStore[T], setUserInfoFunc SetUserInfoFunc[T]) *Storage[T] {
+func NewStorage[T User](userStore UserStore[T], setUserInfoFunc SetUserInfoFunc[T], getPrivateClaimsFromScopes GetPrivateClaimsFromScopesFunc) *Storage[T] {
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)
 	if setUserInfoFunc == nil {
 		log.Fatalf("NewStorage: missing setUserInfoFunc")
 	}
+	if getPrivateClaimsFromScopes == nil {
+		log.Fatalf("NewStorage: missing getPrivateClaimsFromScopes")
+	}
 	return &Storage[T]{
-		authRequests:    make(map[string]*AuthRequest),
-		codes:           make(map[string]string),
-		tokens:          make(map[string]*Token),
-		refreshTokens:   make(map[string]*RefreshToken),
-		clients:         clients,
-		userStore:       userStore,
-		setUserInfoFunc: setUserInfoFunc,
+		authRequests:               make(map[string]*AuthRequest),
+		codes:                      make(map[string]string),
+		tokens:                     make(map[string]*Token),
+		refreshTokens:              make(map[string]*RefreshToken),
+		clients:                    clients,
+		userStore:                  userStore,
+		setUserInfoFunc:            setUserInfoFunc,
+		getPrivateClaimsFromScopes: getPrivateClaimsFromScopes,
 		services: map[string]Service{
 			userStore.ExampleClientID(): {
 				keys: map[string]*rsa.PublicKey{
@@ -537,16 +545,6 @@ func (s *Storage[T]) GetPrivateClaimsFromScopes(ctx context.Context, userID, cli
 	return s.getPrivateClaimsFromScopes(ctx, userID, clientID, scopes)
 }
 
-func (s *Storage[T]) getPrivateClaimsFromScopes(ctx context.Context, userID, clientID string, scopes []string) (claims map[string]interface{}, err error) {
-	for _, scope := range scopes {
-		switch scope {
-		case CustomScope:
-			claims = appendClaim(claims, CustomClaim, customClaim(clientID))
-		}
-	}
-	return claims, nil
-}
-
 // GetKeyByIDAndClientID implements the op.Storage interface
 // it will be called to validate the signatures of a JWT (JWT Profile Grant and Authentication)
 func (s *Storage[T]) GetKeyByIDAndClientID(ctx context.Context, keyID, clientID string) (*jose.JSONWebKey, error) {
@@ -711,7 +709,7 @@ func (s *Storage[T]) GetPrivateClaimsFromTokenExchangeRequest(ctx context.Contex
 	}
 
 	for k, v := range s.getTokenExchangeClaims(ctx, request) {
-		claims = appendClaim(claims, k, v)
+		claims = AppendClaim(claims, k, v)
 	}
 
 	return claims, nil
@@ -738,7 +736,7 @@ func (s *Storage[T]) getTokenExchangeClaims(ctx context.Context, request op.Toke
 		switch {
 		case strings.HasPrefix(scope, CustomScopeImpersonatePrefix) && request.GetExchangeActor() == "":
 			// Set actor subject claim for impersonation flow
-			claims = appendClaim(claims, "act", map[string]interface{}{
+			claims = AppendClaim(claims, "act", map[string]interface{}{
 				"sub": request.GetExchangeSubject(),
 			})
 		}
@@ -746,7 +744,7 @@ func (s *Storage[T]) getTokenExchangeClaims(ctx context.Context, request op.Toke
 
 	// Set actor subject claim for delegation flow
 	// if request.GetExchangeActor() != "" {
-	// 	claims = appendClaim(claims, "act", map[string]interface{}{
+	// 	claims = AppendClaim(claims, "act", map[string]interface{}{
 	// 		"sub": request.GetExchangeActor(),
 	// 	})
 	// }
@@ -775,7 +773,7 @@ func customClaim(clientID string) map[string]interface{} {
 	}
 }
 
-func appendClaim(claims map[string]interface{}, claim string, value interface{}) map[string]interface{} {
+func AppendClaim(claims map[string]interface{}, claim string, value interface{}) map[string]interface{} {
 	if claims == nil {
 		claims = make(map[string]interface{})
 	}

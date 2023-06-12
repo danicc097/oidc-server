@@ -18,6 +18,25 @@ import (
 type Config[T storage.User] struct {
 	// SetUserInfoFunc overrides population of userinfo based on scope.
 	// Example:
+
+	// 	const (
+	// 		// CustomScope is an example for how to use custom scopes in this library
+	// 		// (in this scenario, when requested, it will return a custom claim)
+	// 		CustomScope = "custom_scope"
+	// 		AuthScope   = "auth"
+	// 		// CustomClaim is an example for how to return custom claims with this library
+	// 		CustomClaim = "custom_claim"
+	// 		AuthClaim   = "auth"
+	// 	)
+	//
+	//	// customClaim demonstrates how to return custom claims based on provided information
+	//	func customClaim(clientID string) map[string]interface{} {
+	//		return map[string]interface{}{
+	//			"client": clientID,
+	//			"other":  "stuff",
+	//		}
+	//	}
+	//
 	// func SetUserInfoFunc(user *CustomUser, userInfo *oidc.UserInfo, scope string, clientID string) {
 	// 	switch scope {
 	// 	case oidc.ScopeOpenID:
@@ -43,6 +62,20 @@ type Config[T storage.User] struct {
 	// 	}
 	// }
 	SetUserInfoFunc storage.SetUserInfoFunc[T]
+
+	// GetPrivateClaimsFromScopesFunc will be called for the creation of a JWT access token to assert claims for custom scopes.
+	// Example:
+	// 	func getPrivateClaimsFromScopes(ctx context.Context, userID, clientID string, scopes []string) (claims map[string]interface{}, err error) {
+	// 		for _, scope := range scopes {
+	// 			switch scope {
+	// 			case CustomScope:
+	// 				claims = storage.AppendClaim(claims, CustomClaim, customClaim(clientID))
+	// 			}
+	// 		}
+	// 		return claims, nil
+	// 	}
+	GetPrivateClaimsFromScopesFunc storage.GetPrivateClaimsFromScopesFunc
+
 	// TLS runs the server with the given certificate.
 	TLS *struct {
 		CertFile string
@@ -63,7 +96,7 @@ func Run[T storage.User](config Config[T]) {
 		log.Fatal("could not create user store: ", err)
 	}
 
-	storage := storage.NewStorage(us, config.SetUserInfoFunc)
+	storage := storage.NewStorage(us, config.SetUserInfoFunc, config.GetPrivateClaimsFromScopesFunc)
 
 	router := exampleop.SetupServer(issuer, storage)
 
