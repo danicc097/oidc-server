@@ -37,19 +37,22 @@ var (
 // typically you would implement this as a layer on top of your database
 // for simplicity this example keeps everything in-memory
 type Storage struct {
-	lock          sync.Mutex
-	authRequests  map[string]*AuthRequest
-	codes         map[string]string
-	tokens        map[string]*Token
-	clients       map[string]*Client
-	userStore     UserStore
-	services      map[string]Service
-	refreshTokens map[string]*RefreshToken
-	signingKey    signingKey
-	deviceCodes   map[string]deviceAuthorizationEntry
-	userCodes     map[string]string
-	serviceUsers  map[string]*Client
+	lock            sync.Mutex
+	authRequests    map[string]*AuthRequest
+	codes           map[string]string
+	tokens          map[string]*Token
+	clients         map[string]*Client
+	userStore       UserStore
+	services        map[string]Service
+	refreshTokens   map[string]*RefreshToken
+	signingKey      signingKey
+	deviceCodes     map[string]deviceAuthorizationEntry
+	userCodes       map[string]string
+	serviceUsers    map[string]*Client
+	setUserInfoFunc SetUserInfoFunc
 }
+
+type SetUserInfoFunc = func(user *User, userInfo *oidc.UserInfo, scope string, clientID string)
 
 type signingKey struct {
 	id        string
@@ -89,15 +92,19 @@ func (s *publicKey) Key() interface{} {
 	return &s.key.PublicKey
 }
 
-func NewStorage(userStore UserStore) *Storage {
+func NewStorage(userStore UserStore, setUserInfoFunc SetUserInfoFunc) *Storage {
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	if setUserInfoFunc == nil {
+		setUserInfoFunc = DefaultSetUserInfoFunc
+	}
 	return &Storage{
-		authRequests:  make(map[string]*AuthRequest),
-		codes:         make(map[string]string),
-		tokens:        make(map[string]*Token),
-		refreshTokens: make(map[string]*RefreshToken),
-		clients:       clients,
-		userStore:     userStore,
+		authRequests:    make(map[string]*AuthRequest),
+		codes:           make(map[string]string),
+		tokens:          make(map[string]*Token),
+		refreshTokens:   make(map[string]*RefreshToken),
+		clients:         clients,
+		userStore:       userStore,
+		setUserInfoFunc: setUserInfoFunc,
 		services: map[string]Service{
 			userStore.ExampleClientID(): {
 				keys: map[string]*rsa.PublicKey{
@@ -645,31 +652,34 @@ func (s *Storage) setUserinfo(ctx context.Context, userInfo *oidc.UserInfo, user
 		return fmt.Errorf("user not found")
 	}
 	for _, scope := range scopes {
-		switch scope {
-		case oidc.ScopeOpenID:
-			userInfo.Subject = user.ID
-		case oidc.ScopeEmail:
-			userInfo.Email = user.Email
-			userInfo.EmailVerified = oidc.Bool(user.EmailVerified)
-		case oidc.ScopeProfile:
-			userInfo.PreferredUsername = user.Username
-			userInfo.Name = user.FirstName + " " + user.LastName
-			userInfo.FamilyName = user.LastName
-			userInfo.GivenName = user.FirstName
-			userInfo.Locale = oidc.NewLocale(user.PreferredLanguage)
-		case oidc.ScopePhone:
-			userInfo.PhoneNumber = user.Phone
-			userInfo.PhoneNumberVerified = user.PhoneVerified
-		case AuthScope:
-			userInfo.AppendClaims(AuthClaim, map[string]interface{}{
-				"is_admin": user.IsAdmin,
-			})
-		case CustomScope:
-			// you can also have a custom scope and assert public or custom claims based on that
-			userInfo.AppendClaims(CustomClaim, customClaim(clientID))
-		}
+		s.setUserInfoFunc(user, userInfo, scope, clientID)
 	}
 	return nil
+}
+
+func DefaultSetUserInfoFunc(user *User, userInfo *oidc.UserInfo, scope string, clientID string) {
+	switch scope {
+	case oidc.ScopeOpenID:
+		userInfo.Subject = user.ID
+	case oidc.ScopeEmail:
+		userInfo.Email = user.Email
+		userInfo.EmailVerified = oidc.Bool(user.EmailVerified)
+	case oidc.ScopeProfile:
+		userInfo.PreferredUsername = user.Username
+		userInfo.Name = user.FirstName + " " + user.LastName
+		userInfo.FamilyName = user.LastName
+		userInfo.GivenName = user.FirstName
+		userInfo.Locale = oidc.NewLocale(user.PreferredLanguage)
+	case oidc.ScopePhone:
+		userInfo.PhoneNumber = user.Phone
+		userInfo.PhoneNumberVerified = user.PhoneVerified
+	case AuthScope:
+		userInfo.AppendClaims(AuthClaim, map[string]interface{}{
+			"is_admin": user.IsAdmin,
+		})
+	case CustomScope:
+		userInfo.AppendClaims(CustomClaim, customClaim(clientID))
+	}
 }
 
 // ValidateTokenExchangeRequest implements the op.TokenExchangeStorage interface

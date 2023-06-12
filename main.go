@@ -22,7 +22,7 @@ func main() {
 		log.Fatal("could not create user store: ", err)
 	}
 
-	storage := storage.NewStorage(us)
+	storage := storage.NewStorage(us, storage.DefaultSetUserInfoFunc)
 
 	router := exampleop.SetupServer(issuer, storage)
 
