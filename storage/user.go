@@ -55,7 +55,7 @@ func NewUserStore(issuer string, dataDir string) (UserStore, error) {
 		return nil, fmt.Errorf("could not load users from JSON: %w", err)
 	}
 
-	go watchFolder(dataDir, &store)
+	go watchUsersFolder(dataDir, &store)
 
 	return &store, nil
 }
@@ -122,7 +122,7 @@ func (u userStore) GetUserByUsername(username string) *User {
 	return nil
 }
 
-func watchFolder(dataDir string, userStore *userStore) {
+func watchUsersFolder(dataDir string, userStore *userStore) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)

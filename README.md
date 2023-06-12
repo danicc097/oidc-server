@@ -14,7 +14,9 @@ Authorization server listens on port `10001`. Expose accordingly.
 
 # Expected volume files
 
-`/data/users/*.json`: JSON files with key-value pairs of users indexed by
-username for easier testing. Users will be combined in ascending
-filename order and overriden by username. See `storage/user.go`'s `User`.
-`/data/redirect_uris.txt`: valid redirect URIs to load at startup.
+- `/data/users/*.json`: JSON files with key-value pairs of users for easier
+  testing. Keys are ignored. Server will shutdown if duplicated IDs are
+  found. The `/data/users` folder is watched for changes. See
+  `storage/user.go`'s `User` for available fields.
+
+- `/data/redirect_uris.txt`: valid redirect URIs to load at startup.
