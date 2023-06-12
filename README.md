@@ -11,12 +11,13 @@ Authorization server listens on port `10001`. Expose accordingly.
 # Runtime environment variables
 
 `OIDC_ISSUER`: fully qualified domain name.
+`DATA_DIR`: absolute path to stored mock data.
 
-# Expected volume files
+# Required files
 
-- `/data/users/*.json`: JSON files with key-value pairs of users for easier
+- `${DATA_DIR}/users/*.json`: JSON files with key-value pairs of users for easier
   testing. Keys are ignored. Server will shutdown if duplicated IDs are
-  found. The `/data/users` folder is watched for changes. See
+  found. The `${DATA_DIR}/users` folder is watched for changes. See
   `storage/user.go`'s `User` for available fields.
 
-- `/data/redirect_uris.txt`: valid redirect URIs to load at startup.
+- `${DATA_DIR}/redirect_uris.txt`: valid redirect URIs to load at startup.

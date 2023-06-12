@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -23,9 +24,10 @@ const (
 )
 
 func init() {
-	content, err := os.ReadFile("/data/redirect_uris.txt")
+	redirectURIsPath := path.Join(os.Getenv("DATA_DIR"), "redirect_uris.txt")
+	content, err := os.ReadFile(redirectURIsPath)
 	if err != nil {
-		panic(fmt.Errorf("could not read /data/redirect_uris.txt: %w", err))
+		panic(fmt.Errorf("could not read %s: %w", redirectURIsPath, err))
 	}
 
 	redirectURIs := strings.Split(string(content), "\n")

@@ -34,14 +34,6 @@ type Service struct {
 	keys map[string]*rsa.PublicKey
 }
 
-// TODO: User struct should be defined by client using this server
-// and use generics to fill in.
-// func (s *Storage) setUserinfo should instead be passed as arg to NewStorage.
-// signature can remain func(ctx context.Context, userInfo *oidc.UserInfo, userID, clientID string, scopes []string) (err error)
-// and if not set, use default setUserInfo.
-// due to this, we need to expose main.go as a Run function that accepts the custom store
-// so that clients just use oidcserver.Run(store)
-// and leave dockerfile up to clients
 type UserStore interface {
 	GetUserByID(string) *User
 	GetUserByUsername(string) *User
