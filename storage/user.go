@@ -45,7 +45,7 @@ type userStore struct {
 }
 
 var StorageErrors struct {
-	errors []string
+	Errors []string
 	mu     sync.RWMutex
 }
 
@@ -96,7 +96,9 @@ func (u *userStore) LoadUsersFromJSON() error {
 
 			for _, user := range uu {
 				if _, exists := u.users[user.ID]; exists {
-					log.Printf("%s: %s: user with ID %s already exists", filePath, user.Username, user.ID)
+					errMsg := fmt.Sprintf("%s: %s: user with ID %s already exists", filePath, user.Username, user.ID)
+					StorageErrors.Errors = append(StorageErrors.Errors, errMsg)
+					log.Println(errMsg)
 				}
 				u.users[user.ID] = user
 			}
@@ -143,15 +145,14 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 					return
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Printf("file modified:", event.Name)
+					log.Printf("file modified: %s", event.Name)
 					err := userStore.LoadUsersFromJSON()
 					StorageErrors.mu.Lock()
+					StorageErrors.Errors = []string{}
 					if err != nil {
 						errMsg := fmt.Sprintf("error reloading users: %s", err)
-						StorageErrors.errors = append(StorageErrors.errors, errMsg)
-						log.Printf(errMsg)
-					} else {
-						StorageErrors.errors = []string{}
+						StorageErrors.Errors = append(StorageErrors.Errors, errMsg)
+						log.Println(errMsg)
 					}
 					StorageErrors.mu.Unlock()
 				}
@@ -159,27 +160,27 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 				if !ok {
 					return
 				}
-				log.Printf("watcher error:", err)
+				log.Printf("watcher error: %s", err)
 			}
 		}
 	}()
 
 	err = filepath.WalkDir(dataDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			log.Printf("walkDir error:", err)
+			log.Printf("walkDir error: %s", err)
 			return err
 		}
 		if !d.IsDir() {
 			err = watcher.Add(path)
 			if err != nil {
-				log.Printf("watcher error:", err)
+				log.Printf("watcher error: %s", err)
 				return err
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		log.Printf("walk error:", err)
+		log.Printf("walk error: %s", err)
 	}
 
 	<-done

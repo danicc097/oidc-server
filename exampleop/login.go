@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/danicc097/oidc-server/storage"
 	"github.com/gorilla/mux"
 )
 
@@ -47,6 +49,13 @@ func (l *login) loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderLogin(w http.ResponseWriter, id string, err error) {
+	if len(storage.StorageErrors.Errors) > 0 {
+		errMsg := strings.Join(storage.StorageErrors.Errors, "\n")
+		fmt.Printf("storage error err: %v\n", errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
 	data := &struct {
 		ID    string
 		Error string
