@@ -91,12 +91,12 @@ func (u *userStore) LoadUsersFromJSON() error {
 
 			for _, user := range uu {
 				if _, exists := u.users[user.ID]; exists {
-					log.Fatalf("%s: %s: user with ID %s already exists", filePath, user.Username, user.ID)
+					log.Println("%s: %s: user with ID %s already exists", filePath, user.Username, user.ID)
 				}
 				u.users[user.ID] = user
 			}
 
-			log.Printf("loaded users from %s", filePath)
+			log.Println("loaded users from %s", filePath)
 		}
 	}
 
@@ -141,8 +141,13 @@ func watchUsersFolder(dataDir string, userStore *userStore) {
 					log.Println("file modified:", event.Name)
 					err := userStore.LoadUsersFromJSON()
 					if err != nil {
-						log.Fatalf("error reloading users:", err)
+						// don't shutdown server. if we messed up just check the logs...
+						// there should be a global StoreErrors []string with rw mutex
+						// so that if len > 0 we render an error message in login page, callbacks...
+						// this way we notice the error asap without checking logs.
+						log.Println("error reloading users: %s", err)
 					}
+					// if ok, set StoreErrors to empty slice
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
