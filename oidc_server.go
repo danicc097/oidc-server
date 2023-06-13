@@ -1,6 +1,6 @@
-/**
- * Package oidc_server is a modified version of the example server at https://github.com/zitadel/oidc/tree/main/example/server.
- */
+/*
+Package oidc_server is a modified version of the example server at https://github.com/zitadel/oidc/tree/main/example/server.
+*/
 package oidc_server
 
 import (
