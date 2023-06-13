@@ -1,4 +1,4 @@
-module github.com/danicc097/oidc-server
+module github.com/danicc097/oidc-server/v3
 
 go 1.19
 
