@@ -1,0 +1,3 @@
+#!/bin/bash
+
+DATA_DIR=./example ISSUER="https://authserver.local.localhost/oidc" go run example/main.go

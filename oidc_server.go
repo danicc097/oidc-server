@@ -20,7 +20,7 @@ import (
 type Config[T storage.User] struct {
 	// SetUserInfoFunc overrides population of userinfo based on scope.
 	// Example:
-
+	//
 	// 	const (
 	// 		// CustomScope is an example for how to use custom scopes in this library
 	// 		// (in this scenario, when requested, it will return a custom claim)
