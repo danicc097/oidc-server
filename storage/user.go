@@ -31,6 +31,7 @@ type UserStore[T User] interface {
 	GetUserByID(string) *T
 	GetUserByUsername(string) *T
 	ExampleClientID() string
+	Users() map[string]*T
 }
 
 type userStore[T User] struct {
@@ -62,6 +63,10 @@ func NewUserStore[T User](issuer string, dataDir string) (UserStore[T], error) {
 
 func (u *userStore[T]) ExampleClientID() string {
 	return "service"
+}
+
+func (u *userStore[T]) Users() map[string]*T {
+	return u.users
 }
 
 func (u *userStore[T]) LoadUsersFromJSON() error {

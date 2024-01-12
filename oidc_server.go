@@ -126,7 +126,7 @@ func Run[T storage.User](config Config[T]) {
 
 	storage := storage.NewStorage(us, config.SetUserInfoFunc, config.GetPrivateClaimsFromScopesFunc)
 
-	router := exampleop.SetupServer(issuer, storage, config.PathPrefix)
+	router := exampleop.SetupServer(issuer, storage, config.PathPrefix, us.Users())
 
 	server := &http.Server{
 		Addr:    ":" + port,
