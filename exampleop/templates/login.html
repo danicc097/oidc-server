@@ -7,6 +7,9 @@
   </head>
   <body style="display: flex; align-items: center; justify-content: center; height: 100vh">
     <form method="POST" action="{{.PathPrefix}}/login/username" style="height: 200px; width: 200px">
+      <!-- oidc request id -->
+      <input type="hidden" name="id" value="{{.ID}}" />
+
       <div>
         <label for="userSelect">Select user:</label>
         <select id="userSelect" name="selectedUser" style="width: 100%" onchange="updateCredentials(this)">
