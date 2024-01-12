@@ -91,9 +91,19 @@ func (u *userStore[T]) LoadUsersFromJSON() error {
 				return fmt.Errorf("invalid users in %s: %w", filePath, err)
 			}
 
-			for _, user := range uu {
+			usernames := map[string]struct{}{}
+			for _, u := range u.users {
+				usernames[(*u).Username()] = struct{}{}
+			}
+
+			for key, user := range uu {
 				if _, exists := u.users[(*user).ID()]; exists {
-					errMsg := fmt.Sprintf("%s: %s: user with ID %s already exists", filePath, (*user).Username(), (*user).ID())
+					errMsg := fmt.Sprintf("%s: %s: user with ID %s already exists", filePath, key, (*user).ID())
+					errs = append(errs, errMsg)
+					log.Println(errMsg)
+				}
+				if _, exists := usernames[(*user).Username()]; exists {
+					errMsg := fmt.Sprintf("%s: %s: user with username %s already exists", filePath, key, (*user).Username())
 					errs = append(errs, errMsg)
 					log.Println(errMsg)
 				}
